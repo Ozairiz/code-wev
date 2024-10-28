@@ -1,0 +1,4 @@
+Protocol,AS-number,Network-Address,Wildcard-Mask,Area-Number
+ospf,1,192.168.59.0,0.0.0.255,0
+ospf,1,192.168.159.0,0.0.0.255,0
+

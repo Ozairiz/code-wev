@@ -1,0 +1,19 @@
+---
+- name: Interfaces
+  hosts: all
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Interfaces
+      ios_command:
+       commands:
+        - show run
+      register: print_output
+
+    - name: save
+      copy:
+       content: "{{print_output.stdout[0]}}"
+       dest: "/code-wev/configuration_push/network-infrastructure/ansible/device_backups/{{inventory_hostname}}.cfg"
+    -  debug: var=print_output.stdout_lines
+
