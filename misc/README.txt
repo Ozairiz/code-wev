@@ -36,3 +36,16 @@ service {service} start/stop/restart
  [ - ]  unattended-upgrades
  [ - ]  uuidd
  [ - ]  x11-common
+
+
+git commands:
+ git clone <repo>
+ git branch - if need approvals
+  - do the changes
+ git status
+ git add .
+ git commit -m <commit description>
+ git push origin main
+
+ user: user_name
+ password: PAT (personal access token)
