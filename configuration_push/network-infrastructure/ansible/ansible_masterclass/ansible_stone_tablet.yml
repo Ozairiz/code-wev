@@ -1,0 +1,494 @@
+###################### Gather IOS Facts ######################
+---
+- hosts: routers
+  #gather_facts: false
+  tasks:
+    - name: Print Ansible Default Facts
+      ansible.builtin.debug:
+        msg: 
+          - "{{ ansible_config_file }}"
+          - "{{ inventory_file }}"
+          - "{{ ansible_facts }}"
+          - "{{ ansible_user }}"
+    - name: Gather and print IOS facts
+      cisco.ios.ios_facts:
+        gather_subset: all
+
+---
+- name: Gather IOS Facts
+  hosts: routers
+  gather_facts: false
+  tasks:
+    - name: Gather and print IOS facts
+      cisco.ios.ios_facts:
+        gather_subset: all
+
+# SHOW COMMANDS:
+---
+- name: SHOW COMMANDS
+  hosts: routers
+  gather_facts: false
+  tasks:
+    - name: Send Command
+      cisco.ios.ios_command:
+        commands:
+          - show inventory
+          - show ip interface brief
+      register: show_command_output
+
+    - name: Print Output
+      ansible.builtin.debug:
+        msg: "{{ show_command_output.stdout_lines }}"
+
+---
+- name: SHOW COMMANDS
+  hosts: routers
+  gather_facts: false
+  tasks:
+    - name: Send Command
+      cisco.ios.ios_command:
+        commands:
+          - show version
+          - show ip interface brief
+        match: all
+        wait_for: # this is to just point it to a desired device / this is like a filter
+          - result[0] contains IOSv
+          - result[1] contains GigabitEthernet
+      register: show_command_output
+
+    - name: SHOW version
+      ansible.builtin.debug:
+        msg: "{{ show_command_output.stdout_lines[0] }}"
+
+    - name: SHOW INTERFACES
+      ansible.builtin.debug:
+        msg: "{{ show_command_output.stdout_lines[1] }}"
+
+# Deploy Configuration Using Variables
+---
+- name: Configure domain name
+  hosts: routers
+  gather_facts: false
+  vars_files: # declare the files where the variables are located
+    - /home/ubuntu/python_venv/ansible_310/inventory/vios_group.yml
+
+  tasks:
+    - name: Configure IP Domain name
+      cisco.ios.ios_config:
+        lines: ip domain name {{ ip_domain_name }}
+      register: ip_domain_config
+
+    - name: Print output
+      ansible.builtin.debug:
+        msg: "{{ ip_domain_config }}"
+
+###################### Backup the Device Configurations ######################
+
+--- # using new directory or using new file
+- name: Configure domain name
+  hosts: routers
+  gather_facts: false
+  vars_files:
+    - /home/ubuntu/python_venv/ansible_310/inventory/vios_group.yml
+  tasks:
+    - name: Print date and time
+      ansible.builtin.debug:
+        msg: "{{ lookup('pipe', 'date +%Y-%m-%d@%H:%M:%S')}}"
+
+    - name: Configure domain
+      cisco.ios.ios_config:
+        lines: ip domain name {{ ip_domain_name }}
+        backup: yes
+        backup_options:
+ #        dir_path: ./home/ubuntu/python_venv/ansible_310/ansible_backup_scripts/backups/{{ inventory_hostname }}/ | "This will create a directory path"
+          filename: "/home/ubuntu/python_venv/ansible_310/ansible_backup_scripts/backups/{{ inventory_hostname }}_{{ ansible_ssh_host }}_{{ lookup('pipe', 'date +%Y-%m-%d@%H:%M:%S')}}.cfg"
+      register: fresh_config
+    
+    - name: Print Command Output
+      ansible.builtin.debug:
+        msg: "{{ fresh_config }}"
+
+--- # running
+- name: Configure domain name
+  hosts: routers
+  gather_facts: false
+  vars_files:
+    - /home/ubuntu/python_venv/ansible_310/inventory/vios_group.yml
+  tasks:
+    - name: Print date and time
+      ansible.builtin.debug:
+        msg: "{{ lookup('pipe', 'date +%Y-%m-%d@%H:%M:%S')}}"
+
+    - name: Configure domain
+      cisco.ios.ios_config:
+        lines: ip domain name {{ ip_domain_name }}
+        diff_against: running # this will show you the difference of the script to push against running configs using "ansible-playbook --diff" argumet
+        backup: yes
+        backup_options:
+          filename: "/home/ubuntu/python_venv/ansible_310/ansible_backup_scripts/backups/{{ inventory_hostname }}_{{ ansible_ssh_host }}_{{ lookup('pipe', 'date +%Y-%m-%d@%H:%M:%S')}}.cfg" # save it to a new file
+      register: device_config
+    
+    - name: Print Command Output
+      ansible.builtin.debug:
+        msg: "{{ device_config }}"
+
+# Ex:
+#  --- before
+#  +++ after
+#  @@ -10,7 +10,7 @@
+#  no mmi auto-configure
+#  no mmi pvc
+#  mmi snmp-timeout 180
+#  -ip domain name anewtest33333.com | running config
+#  +ip domain name anewtest444444.com | config currently holding
+#  ip cef
+#  no ipv6 cef
+#  multilink bundle-name authenticated
+
+--- # startup
+- name: Configure domain name
+  hosts: routers
+  gather_facts: false
+  vars_files:
+    - /home/ubuntu/python_venv/ansible_310/inventory/vios_group.yml
+  tasks:
+    - name: Print date and time
+      ansible.builtin.debug:
+        msg: "{{ lookup('pipe', 'date +%Y-%m-%d@%H:%M:%S')}}"
+
+    - name: Configure domain
+      cisco.ios.ios_config:
+        lines: ip domain name {{ ip_domain_name }}
+        diff_against: startup # this will show you the difference of the script to push against startup configs using "ansible-playbook --diff" argumet
+        backup: yes
+        backup_options:
+          filename: "/home/ubuntu/python_venv/ansible_310/ansible_backup_scripts/backups/{{ inventory_hostname }}_{{ ansible_ssh_host }}_{{ lookup('pipe', 'date +%Y-%m-%d@%H:%M:%S')}}.cfg" # save it to a new file
+      register: device_config
+    
+    - name: Print Command Output
+      ansible.builtin.debug:
+        msg: "{{ device_config }}"
+
+# Ex:
+#  --- before
+#  +++ after
+#  @@ -10,7 +10,7 @@
+#  no mmi auto-configure
+#  no mmi pvc
+#  mmi snmp-timeout 180
+#  -ip domain name cisco.com | startup config
+#  +ip domain name anewtest444444.com | config currently holding
+#  ip cef
+#  no ipv6 cef
+#  multilink bundle-name authenticated
+
+--- # intended
+- name: Configure domain name
+  hosts: routers
+  gather_facts: false
+  vars_files:
+    - /home/ubuntu/python_venv/ansible_310/inventory/vios_group.yml
+  tasks:
+    - name: Print date and time
+      ansible.builtin.debug:
+        msg: "{{ lookup('pipe', 'date +%Y-%m-%d@%H:%M:%S')}}"
+
+    - name: Configure domain
+      cisco.ios.ios_config:
+        lines: ip domain name {{ ip_domain_name }}
+        diff_against: intended # this is intended to copy the master config file towards new devices for compliance
+        diff_ignore_lines: # if there are difference captured, it can be ignored using this
+          - ip domain name *
+        intended_config: "{{ lookup('file', '/home/ubuntu/python_venv/ansible_310/ansible_backup_scripts/master_config/R1.cfg') }}" # location of the master config file
+        backup: no
+        backup_options:
+          filename: "/home/ubuntu/python_venv/ansible_310/ansible_backup_scripts/backups/{{ inventory_hostname }}_{{ ansible_ssh_host }}_{{ lookup('pipe', 'date +%Y-%m-%d@%H:%M:%S')}}.cfg" # save it to a new file
+      register: device_config
+    
+    - name: Print Command Output
+      ansible.builtin.debug:
+        msg: "{{ device_config }}"
+
+#  Ex:
+#  --- before
+#  +++ after
+#  @@ -10,7 +10,7 @@
+#  no mmi auto-configure
+#  no mmi pvc
+#  mmi snmp-timeout 180
+#  -ip domain name anewtest59595959.com | configs intended to configure
+#  +ip domain name anewtest444444.com | inside the master config file
+#  ip cef
+#  no ipv6 cef
+#  multilink bundle-name authenticated
+
+
+# Debug Module:
+---
+- name: Gather IOS Facts via Debug Module
+  hosts: routers
+  tasks:
+
+- name: Gather IOS Facts
+  hosts: routers
+  gather_facts: false
+  tasks:
+    - name: Prin Ansible Facts
+      ansible.builtin.debug:
+        msg: >- # | , > , >-
+            IOS Type is: {{ ansible_facts.net_iostype}}
+            Net Model No: {{ ansible_facts.net_model}}
+        
+    - name: Print ansible_facts
+      ansible.builtin.debug:
+        msg: |
+           IOS Type is:  {{ ansible_facts.net_iostype }}
+           Net Model No: {{ ansible_facts.net_model }}
+
+
+    - name: Print ansible_facts
+      ansible.builtin.debug:
+        msg: >
+           IOS Type is:  {{ ansible_facts.net_iostype }}
+           Net Model No: {{ ansible_facts.net_model }}
+
+    - name: Print ansible_facts from msg / variable from the inventory file
+      ansible.builtin.debug:
+        msg: "{{ test_var }}"
+        verbosity: 3
+
+    - name: Print ansible_facts from var
+      ansible.builtin.debug:
+        var: test_var
+
+###################### IOS command specific modules ######################
+
+        ### HOSTNAME ###
+- name: hostname module demo
+  hosts: r2
+  gather_facts: false
+  tasks:
+######### merged ############################
+    - name: Configure Hostname
+      cisco.ios.ios_hostname: # hostname module
+        config:
+          hostname: r3
+        state: overridden
+      register: host_conf
+
+    - name: Print hostname conf
+      ansible.builtin.debug:
+        msg: "{{ host_conf }}"
+######### gathered ##########################
+    - name: Configure Hostname
+      cisco.ios.ios_hostname:
+        state: gathered
+      register: host_conf
+
+    - name: Print hostname conf
+      ansible.builtin.debug:
+        msg: "{{ host_conf }}"
+
+######### rendered ##########################
+    - name: Configure Hostname
+      cisco.ios.ios_hostname:
+        config:
+          hostname: r2
+        state: rendered
+      register: host_conf
+
+    - name: Print hostname conf
+      ansible.builtin.debug:
+        msg: "{{ host_conf }}"
+######### parsed ############################
+    - name: Configure Hostname
+      cisco.ios.ios_config:
+        backup: true
+        backup_options:
+          filename: r2.conf
+
+    - name: Configure Hostname
+      cisco.ios.ios_hostname:
+        running_config: "{{ lookup('file', 'backup/test.cnf')}}"
+        state: parsed
+      register: host_conf
+
+    - name: Print hostname conf
+      ansible.builtin.debug:
+        msg: "{{ host_conf }}"
+######### deleted ###########################
+    - name: Configure Hostname
+      cisco.ios.ios_hostname:
+        state: deleted
+      register: host_conf
+
+    - name: Print hostname conf
+      ansible.builtin.debug:
+        msg: "{{ host_conf }}"
+
+###########################################################################################
+
+          ### INTERFACE ###
+- name: interfaces module demo
+  hosts: r2
+  gather_facts: false
+  tasks:
+######## gathered ##########################
+    - name: Interface Config
+      cisco.ios.ios_interfaces:
+        state: gathered
+      register: intf_config
+
+    - name: Print intf config
+      ansible.builtin.debug:
+        msg:
+          - "{{ intf_config.gathered }}"
+######## merged ############################
+    - name: Interface Config
+      cisco.ios.ios_interfaces:
+        config:
+          - name: GigabitEthernet0/0
+          - name: GigabitEthernet0/2
+            description: new_desc1
+            mtu: 1024
+            enabled: true
+        state: overridden
+      register: intf_config
+
+    - name: Print intf config
+      ansible.builtin.debug:
+        msg:
+          - "{{ intf_config }}"
+
+######## rendered ##########################
+    - name: Interface Config
+      cisco.ios.ios_interfaces:
+        config:
+          - name: GigabitEthernet0/0
+          - name: GigabitEthernet0/2
+            description: new_desc1
+            mtu: 1024
+            enabled: true
+        state: rendered
+      register: intf_config
+
+    - name: Print intf config
+      ansible.builtin.debug:
+        msg:
+          - "{{ intf_config.rendered }}"
+
+######## parsed ############################
+    - name: Interface Config
+      cisco.ios.ios_interfaces:
+        running_config: "{{ lookup('file', 'backup/intf.cnf')}}" # parse configs from a config file
+        state: parsed
+      register: intf_config
+
+    - name: Print intf config
+      ansible.builtin.debug:
+        msg:
+          - "{{ intf_config }}"
+######## template ############################
+    - name: Interface Config
+      cisco.ios.ios_interfaces:
+        config:
+          - name: GigabitEthernet0/3
+            template: demo-template1
+        state: merged
+      register: intf_config
+
+    - name: Print intf config
+      ansible.builtin.debug:
+        msg:
+          - "{{ intf_config }}"
+######## deleted ###########################
+    - name: Interface Config
+      cisco.ios.ios_interfaces:
+        config: # This is for cleanup, removing all configs on an interface
+          - name: GigabitEthernet0/1
+          - name: GigabitEthernet0/2
+        state: deleted
+      register: intf_config
+
+    - name: Print intf config
+      ansible.builtin.debug:
+        msg:
+          - "{{ intf_config }}"
+######### purged ############################
+    - name: Interface Config
+      cisco.ios.ios_interfaces:
+        config:
+          - name: Loopback2000
+        state: purged
+      register: intf_config
+
+    - name: Print intf config
+      ansible.builtin.debug:
+        msg:
+          - "{{ intf_config }}"
+
+          ### USER ###
+- name: IOS Users
+  hosts: r2
+  gather_facts: false
+  tasks:
+  ######### Create User #############
+    - name: Create User
+      no_log: true
+      cisco.ios.ios_user:
+        name: ansible_admin
+        hashed_password:
+          type: 5
+          value: $1$pass$q.8O0ezj5JxZNEcvsQvQR0
+        privilege: 15
+      register: add_user
+
+    - name: Print Output
+      ansible.builtin.debug:
+        msg: "{{ add_user }}" 
+  ######### Delete User #############
+    - name: Create User
+      no_log: true
+      cisco.ios.ios_user:
+        name: ansible_admin1
+        state: absent
+      register: add_user
+
+    - name: Print Output
+      ansible.builtin.debug:
+        msg: "{{ add_user }}"
+  ######### Purge Users #############
+    - name: Remove User
+      no_log: true
+      cisco.ios.ios_user:
+        # aggregate: # this is for user exception
+        #   - name: cisco
+        purge: true
+      register: remove_user
+
+    - name: Print Output
+      ansible.builtin.debug:
+        msg: "{{ remove_user }}"
+
+        ### STATIC ROUTES ###
+- name: IOS Users
+  hosts: r2
+  gather_facts: false
+  tasks:
+    - name: Config Static Route
+      cisco.ios.static_routes:
+        config:
+          - address_families:
+              - afi: ipv4
+                routes:
+                  - dest: 100.0.0.0/24
+                    next_hops:
+                      - forward_router_address: 10.10.10.1
+                        name: new_route
+                        distance_metric: 10
+        state: merged # options: rendered, deleted
+      register: static_route_config
+
+    - name: Print Output
+      ansible.builtin.debug:
+        msg: "{{ static_route_config }}" 

@@ -1,0 +1,23 @@
+---
+- name: Configure domain name
+  hosts: routers
+  gather_facts: false
+  vars_files:
+    - /home/ubuntu/python_venv/ansible_310/inventory/vios_group.yml
+  tasks:
+    - name: Print date and time
+      ansible.builtin.debug:
+        msg: "{{ lookup('pipe', 'date +%Y-%m-%d@%H:%M:%S')}}"
+
+    - name: Configure domain
+      cisco.ios.ios_config:
+        lines: ip domain name {{ ip_domain_name }}
+        backup: yes
+        backup_options:
+ #        dir_path: ./home/ubuntu/python_venv/ansible_310/ansible_backup_scripts/backups/{{ inventory_hostname }}/ | "This will create a directory path"
+          filename: "/home/ubuntu/python_venv/ansible_310/ansible_backup_scripts/backups/{{ inventory_hostname }}_{{ ansible_ssh_host }}_{{ lookup('pipe', 'date +%Y-%m-%d@%H:%M:%S')}}.cfg"
+      register: device_config
+    
+    - name: Print Command Output
+      ansible.builtin.debug:
+        msg: "{{ device_config }}"

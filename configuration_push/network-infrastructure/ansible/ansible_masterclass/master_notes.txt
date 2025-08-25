@@ -1,0 +1,112 @@
+Startup Ansible in Virtual Environment
+Steps:
+apt install python3-pip -y
+apt install python3-virtualenv -y
+
+create a directory python_venv
+cd python_venv
+
+Create virtual environment folder:
+ virtualenv -p python3.8 ansible_lab
+ source ansible_lab/bin/activate
+  deactivate
+
+Install ansible to the virtual environment
+Steps:
+pip install ansible -y
+ ansible --version
+ ansible-community --version
+ ansible-doc -l
+
+Command:
+ansible all -i 192.168.47.59, -c ansible.netcommon.network_cli -u aaron -k -m cisco.ios.ios_facts -e ansible_network_os=cisco.ios.ios
+ansible all -i 192.168.47.59, -c ansible.netcommon.network_cli -u aaron -k -m cisco.ios.ios_command -e ansible_network_os=cisco.ios.ios -a "commands='show ip int br'"
+
+Common Error:
+1.
+192.168.47.59 | FAILED! => {
+    "msg": "the connection plugin 'ansible.netcommon.network_cli' was not found"
+}
+
+2.
+192.168.47.59 | FAILED! => {
+    "msg": "network os cisco.ios.ios is not supported"
+}
+ Solution:
+1.
+ansible-galaxy collection install ansible.netcommon
+
+2.
+ansible-galaxy collection install cisco.ios
+
+Install Python 3.10:
+ sudo apt update
+ sudo apt install software-properties-common -y
+ sudo add-apt-repository ppa:deadsnakes/ppa -y
+ sudo apt update
+ sudo apt install python3.10 python3.10-venv python3.10-distutils -y
+
+Create a New Virtual Environment with Python 3.10
+ python3.10 -m venv ~/python_venv/<name>
+ source ~/python_venv/<name>/bin/activate
+ sudo apt  install ansible
+
+Enable SSH access to devices
+Linux:
+nano /etc/ssh/ssh_config
+ Add > PubkeyAcceptedKeyTypes +ssh-rsa
+
+ssh-keygen (to generate the private and public keys)
+
+ls ~/.ssh/
+ id_rsa
+ id_rsa.pub
+ known_hosts
+
+Copying public key needs to be shrinked
+ fold -b -w 64 ~/.ssh/id_rsa.pub
+
+Devices:
+ login to the device using local authentication
+  Command:
+  username <ansible_user> privilege 15
+  ip ssh pubkey-chain
+    username <ansible_user>
+    key-string
+    - paste the folded public key
+    exit
+
+Apply to the inventory:
+ Ex. 
+  [vios_group]
+  R1 ansible_host=192.168.47.59 ansible_user=ansible_admin ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+Connect to the device using the ansible_user only
+ ssh ansible_user@R1
+
+
+CREATE ENCRYPTED USERNAME AND PASSWORD with VAULT IDs
+ansible_user: admin (vid1: 123)
+ansible_password: cisco (vid2:456)
+
+Command:
+ansible-vault encrypt_string admin --vault-id vid1@prompt --name ansible_user
+ansible-vault encrypt_string cisco --vault-id vid2@prompt --name ansible_password
+
+Execution:
+ansible-playbook play_demo.yml --vault-id vid1@prompt --vault-id vid2@prompt
+
+Using a vault-password inside a file
+vault_id1: 123
+vault_id2: 456
+ansible-playbook play_demo.yml --vault-id vid1@./vault_id1 --vault-id vid2@vault_id2
+
+Store every arguments into ansible.cfg:
+vault_identity_list=vid1@/home/ubuntu/python_venv/ansible_310/vault_id1, vid2@/home/ubuntu/python_venv/ansible_310/vault_id2
+Then:
+ansible-playbook play_demo.yml
+
+
+
+
+

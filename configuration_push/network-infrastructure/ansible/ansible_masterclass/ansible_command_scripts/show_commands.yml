@@ -1,0 +1,23 @@
+---
+- name: SHOW COMMANDS
+  hosts: routers
+  gather_facts: false
+  tasks:
+    - name: Send Command
+      cisco.ios.ios_command:
+        commands:
+          - show version
+          - show ip interface brief
+        match: all
+        wait_for: # this is to just point it to a desired device / this is like a filter
+          - result[0] contains IOSv
+          - result[1] contains GigabitEthernet
+      register: show_command_output
+
+    - name: SHOW version
+      ansible.builtin.debug:
+        msg: "{{ show_command_output.stdout_lines[0] }}"
+
+    - name: SHOW INTERFACES
+      ansible.builtin.debug:
+        msg: "{{ show_command_output.stdout_lines[1] }}"

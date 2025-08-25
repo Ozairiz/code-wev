@@ -1,0 +1,122 @@
+# Gather IOS Facts
+---
+- hosts: routers
+  #gather_facts: false
+  tasks:
+    - name: Print Ansible Default Facts
+      ansible.builtin.debug:
+        msg: 
+          - "{{ ansible_config_file }}"
+          - "{{ inventory_file }}"
+          - "{{ ansible_facts }}"
+          - "{{ ansible_user }}"
+    - name: Gather and print IOS facts
+      cisco.ios.ios_facts:
+        gather_subset: all
+
+---
+- name: Gather IOS Facts
+  hosts: routers
+  gather_facts: false
+  tasks:
+    - name: Gather and print IOS facts
+      cisco.ios.ios_facts:
+        gather_subset: all
+
+# IOS Command Deployment:
+---
+- name: SHOW COMMANDS
+  hosts: routers
+  gather_facts: false
+  tasks:
+    - name: Send Command
+      cisco.ios.ios_command:
+        commands:
+          - show inventory
+          - show ip interface brief
+      register: show_command_output
+
+    - name: Print Output
+      ansible.builtin.debug:
+        msg: "{{ show_command_output.stdout_lines }}"
+
+---
+- name: SHOW COMMANDS
+  hosts: routers
+  gather_facts: false
+  tasks:
+    - name: Send Command
+      cisco.ios.ios_command:
+        commands:
+          - show version
+          - show ip interface brief
+        match: all
+        wait_for: # this is to just point it to a desired device / this is like a filter
+          - result[0] contains test_router
+          - result[1] contains GigabitEthernet
+      register: show_command_output
+
+    - name: SHOW version
+      ansible.builtin.debug:
+        msg: "{{ show_command_output.stdout_lines[0] }}"
+
+    - name: SHOW INTERFACES
+      ansible.builtin.debug:
+        msg: "{{ show_command_output.stdout_lines[1] }}"
+
+# Deploy Configuration Using Variables
+---
+- name: Configure domain name
+  hosts: routers
+  gather_facts: false
+  vars_files: # declare the files where the variables are located
+    - /home/ubuntu/python_venv/ansible_310/inventory/vios_group.yml
+
+  tasks:
+    - name: Configure IP Domain name
+      cisco.ios.ios_config:
+        lines: ip domain name {{ ip_domain_name }}
+      register: ip_domain_config
+
+    - name: Print output
+      ansible.builtin.debug:
+        msg: "{{ ip_domain_config }}"
+
+
+# Debug Module:
+---
+- name: Gather IOS Facts via Debug Module
+  hosts: routers
+  tasks:
+
+- name: Gather IOS Facts
+  hosts: routers
+  gather_facts: false
+  tasks:
+    - name: Prin Ansible Facts
+      ansible.builtin.debug:
+        msg: >- # | , > , >-
+            IOS Type is: {{ ansible_facts.net_iostype}}
+            Net Model No: {{ ansible_facts.net_model}}
+        
+    - name: Print ansible_facts
+      ansible.builtin.debug:
+        msg: |
+           IOS Type is:  {{ ansible_facts.net_iostype }}
+           Net Model No: {{ ansible_facts.net_model }}
+
+
+    - name: Print ansible_facts
+      ansible.builtin.debug:
+        msg: >
+           IOS Type is:  {{ ansible_facts.net_iostype }}
+           Net Model No: {{ ansible_facts.net_model }}
+
+    - name: Print ansible_facts from msg / variable from the inventory file
+      ansible.builtin.debug:
+        msg: "{{ test_var }}"
+        verbosity: 3
+
+    - name: Print ansible_facts from var
+      ansible.builtin.debug:
+        var: test_var

@@ -1,0 +1,30 @@
+---
+- hosts: routers
+  #gather_facts: false
+  tasks:
+    - name: Print Ansible Default Facts
+      ansible.builtin.debug:
+        msg: 
+          - "{{ ansible_config_file }}"
+          - "{{ inventory_file }}"
+          - "{{ ansible_facts }}"
+          - "{{ ansible_user }}"
+    - name: Gather and print IOS facts
+      cisco.ios.ios_facts:
+        gather_subset: all
+
+    - name: Print ansible Config location
+      ansible.builtin.debug:
+        msg: 
+          - "{{ ansible_config_file }}"
+          - "{{ inventory_file }}"
+          - "{{ ansible_facts }}"
+    - name: Print Router hostname
+      ansible.builtin.debug:
+        msg:
+          - "{{ ansible_host }}"
+          - "{{ ansible_facts.net_hostname }}"
+          - "{{ ansible_facts.net_model }}"
+          - "{{ ansible_facts.net_version}}"
+    - name: Gather and print IOS facts
+
